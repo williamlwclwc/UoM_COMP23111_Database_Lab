@@ -1,0 +1,62 @@
+Manager (manager_ID,name) :
+	pk[manager_ID]
+ManPhone (manager_ID,telephone) :
+	pk[manager_ID,telephone],
+	fk[manager_ID -> Manager.manager_ID]
+Artist (artistic_name,genre,managedBy) :
+	pk[artistic_name],
+	fk[managedBy -> Manager.manager_ID]
+Album (album_ID,title,createdBy) :
+	pk[album_ID],
+	fk[createdBy -> Artist.artistic_name]
+MasterTrack (track_ID,working_title,working_length,recordedBy,editedBy) :
+	pk[track_ID],
+	fk[recordedBy -> Artist.artistic_name,
+	   editedBy -> SoundEngineer.sound_eng_id]
+SoundEngineer (sound_eng_ID,name) :
+	pk[sound_eng_ID]
+Buyer(buyer_ID, name, registered_on):
+	pk[buyer_ID]
+Orders(order_number, placed_on, dispatch_date, placedBy):
+	pk[order_number],
+	fk[placedBy -> Buyer.buyer_ID]
+CatalogueEntry(release_date, stock, price, listedAs):
+	pk[listedAs, release_date],
+	fk[listedAs -> Album.album_ID]
+Comprises(order_number, release_date):
+	pk[order_number, release_date],
+	fk[order_number -> Orders.order_number, release_date -> CatalogueEntry.release_date]
+ContractInfo (hasContract,date_from,date_to,
+	      duration [derived as (date_to - date_from)]) :
+	pk[hasContract,date_from,date_to],
+	fk[hasContract -> Artist.artistic_name]
+FinishedTrack (originatesFrom,version,released_title,final_length) :
+	pk[originatesFrom,version],
+	fk[originatesFrom -> MasterTrack.track_ID]
+HasTrack(album_ID, version, sequence):
+	pk[album_ID, version],
+	fk[album_ID -> Album.album_ID, version -> FinishedTrack.version]
+GroupArtist(artistic_name, data_formed):
+	pk[artistic_name],
+	fk[artistic_name -> Artist.artistic_name]
+SoloArtist(artistic_name, real_name, performs_since):
+	pk[artistic_name],
+	fk[artistic_name -> Artist.artistic_name]
+HasMember(artistic_name, date_joined):
+	pk[artistic_name],
+	fk[artistic_name -> Artist.artistic_name]
+VinylAlbum(album_ID):
+	pk[album_ID],
+	fk[album_ID -> Album.album_ID]
+Colour(album_ID, colour):
+	pk[album_ID, colour],
+	fk[album_ID -> Album.album_ID]
+TapeAlbum(album_ID, label):
+	pk[album_ID],
+	fk[album_ID -> Album.album_ID]
+CDAlbum(album_ID):
+	pk[album_ID],
+	fk[album_ID -> Album.album_ID]
+Extra(album_ID, extra):
+	pk[album_ID, extra],
+	fk[album_ID -> Album.album_ID]
