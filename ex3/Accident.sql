@@ -17,20 +17,23 @@ and license = 'KUY 629';
 
 -- iii. List the name of the persons that participated in accidents along with the total damage
 -- caused (descend) but only include those whose total damage is above 3000.
-select name from person, participated
+with total_damage as 
+(select name, person.driver_id, sum(damage_amount) 
+from person, participated
 where person.driver_id = participated.driver_id
-and participated.damage_amount > 3000
+group by person.driver_id, name
+having sum(damage_amount) > 3000)
+select name from total_damage
 order by name desc;
 
 -- iv. Create a view that returns the locations where accidents have occurred along with 
 -- the average amount of damage in that location. Call this view average_damage_per_location.
-create table average_damage_per_location
+create view average_damage_per_location
 (
-    location varchar(255),
-    average_damage int
-);
-insert into average_damage_per_location
-(select location, avg(damage_amount) from accident, participated
+    location,
+    average_damage
+)
+as (select location, avg(damage_amount) from accident, participated
 where accident.report_number = participated.report_number
 group by accident.location);
 
@@ -40,5 +43,7 @@ select location
 from average_damage_per_location
 where average_damage = (select max(average_damage)
 from average_damage_per_location);
+
+drop view average_damage_per_location;
 
 start /opt/info/courses/COMP23111/drop-Accident-tables.sql
