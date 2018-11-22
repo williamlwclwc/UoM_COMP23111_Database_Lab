@@ -2,7 +2,7 @@ start /opt/info/courses/COMP23111/create-Accident-tables.sql
 start /opt/info/courses/COMP23111/populate-Accident-tables.sql
 
 -- i. Find the number of accidents in which the cars belonging to Jane Rowling were involved.
-select accident.report_number, person.name 
+select count(person.name) 
 from accident, person, participated
 where accident.report_number = participated.report_number
 and participated.driver_id = person.driver_id 

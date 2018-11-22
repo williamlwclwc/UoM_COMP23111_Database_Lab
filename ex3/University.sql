@@ -49,7 +49,9 @@ where student.dept_name = 'Comp. Sci.' and section.course_id = 'CS-001');
 
 -- vii. Delete all enrolments in the above section where the student’s name is Zhang.
 delete from (select * from takes inner join student on takes.id = student.id
-where takes.id = student.id and student.name = 'Zhang'); 
+where takes.id = student.id 
+and student.name = 'Zhang'
+and takes.course_id = 'CS-001'); 
 
 -- viii. Delete all takes tuples corresponding to any section & course with substring'database' of the title
 delete from (select * from takes 

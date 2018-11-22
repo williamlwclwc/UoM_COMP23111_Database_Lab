@@ -1,0 +1,213 @@
+SQL> -- sends everything to <EX03-10406141.log>
+SQL> -- [body]
+SQL> -- University
+SQL> 
+SQL> -- (a)
+SQL> 
+SQL> -- Find names of students(no duplicate) take CS
+SQL> select distinct name from student
+  2  inner join takes on student.id = takes.id
+  3  where takes.course_id like 'CS%';
+
+NAME                                                                            
+--------------------                                                            
+Zhang                                                                           
+Brown                                                                           
+Bourikas                                                                        
+Shankar                                                                         
+Levy                                                                            
+Williams                                                                        
+
+6 rows selected.
+
+SQL> 
+SQL> -- Find id & name of students not taken any course before spring 2009
+SQL> select distinct student.id, name from student
+  2  left join takes on student.id = takes.id
+  3  where takes.year is null or not takes.year < 2009;
+
+ID    NAME                                                                      
+----- --------------------                                                      
+98988 Tanaka                                                                    
+54321 Williams                                                                  
+76653 Aoi                                                                       
+19991 Brandt                                                                    
+23121 Chavez                                                                    
+44553 Peltier                                                                   
+98765 Bourikas                                                                  
+76543 Brown                                                                     
+00128 Zhang                                                                     
+12345 Shankar                                                                   
+70557 Snow                                                                      
+
+ID    NAME                                                                      
+----- --------------------                                                      
+45678 Levy                                                                      
+55739 Sanchez                                                                   
+
+13 rows selected.
+
+SQL> 
+SQL> -- For each department, find the maximum salary of instructors in that department
+SQL> select dept_name, id, name, salary from instructor i
+  2  where salary = (select max(salary) from instructor where dept_name = i.dept_name)
+  3  order by i.dept_name;
+
+DEPT_NAME            ID    NAME                     SALARY                      
+-------------------- ----- -------------------- ----------                      
+Biology              76766 Crick                     72000                      
+Comp. Sci.           83821 Brandt                    92000                      
+Elec. Eng.           98345 Kim                       80000                      
+Finance              12121 Wu                        90000                      
+History              58583 Califieri                 62000                      
+Music                15151 Mozart                    40000                      
+Physics              22222 Einstein                  95000                      
+
+7 rows selected.
+
+SQL> 
+SQL> -- Find the lowest, across all departments, of the per-department maximum salary
+SQL> -- computed by the preceding query.
+SQL> select dept_name, salary
+  2  from instructor
+  3  where salary = (select min(salary) from (select dept_name, id, name, salary from instructor i
+  4  where salary = (select max(salary) from instructor where dept_name = i.dept_name)));
+
+DEPT_NAME                SALARY                                                 
+-------------------- ----------                                                 
+Music                     40000                                                 
+
+SQL> 
+SQL> -- (b)
+SQL> 
+SQL> -- i. Create a new CS-001 course in computer science, titled Weekly Seminar, with 10 credits.
+SQL> insert into course
+  2  values ('CS-001', 'Weekly Seminar', 'Comp. Sci.', 10);
+
+1 row created.
+
+SQL> 
+SQL> -- ii. Create a new CS-002 course in computer science, titled Monthly Seminar, with 0 credits.
+SQL> -- insert into course
+SQL> -- values ('CS-002', 'Monthly Seminar', 'Comp. Sci.', 0);
+SQL> -- iii. Explanation: Violated the constraint that courses should have credits, if change credits
+SQL> -- to some number that is bigger than 0 than we can creat the course.
+SQL> 
+SQL> -- iv. Create a section of the CS-001 course in Fall 2009, with section id of 1.
+SQL> insert into section (course_id, sec_id, semester, year)
+  2  values ('CS-001', 1, 'Fall', 2009);
+
+1 row created.
+
+SQL> -- v. Explanation: Because we do not know those information, so we set them as null
+SQL> 
+SQL> -- vi. Enrol every student in the CS department in the section you created in the previous statement.
+SQL> insert into takes (id, course_id, sec_id, semester, year)
+  2  (select student.id, section.course_id, section.sec_id, section.semester, section.year from student, section
+  3  where student.dept_name = 'Comp. Sci.' and section.course_id = 'CS-001');
+
+4 rows created.
+
+SQL> 
+SQL> -- vii. Delete all enrolments in the above section where the student’s name is Zhang.
+SQL> delete from (select * from takes inner join student on takes.id = student.id
+  2  where takes.id = student.id
+  3  and student.name = 'Zhang'
+  4  and takes.course_id = 'CS-001');
+
+1 row deleted.
+
+SQL> 
+SQL> -- viii. Delete all takes tuples corresponding to any section & course with substring'database' of the title
+SQL> delete from (select * from takes
+  2  where takes.course_id in (select section.course_id from section
+  3  inner join course on section.course_id = course.course_id
+  4  where takes.course_id = course.course_id and lower(course.title) like '%database%'));
+
+2 rows deleted.
+
+SQL> 
+SQL> -- ix. Delete the course CS-001.
+SQL> delete from course
+  2  where course.course_id = 'CS-001';
+
+1 row deleted.
+
+SQL> -- x. Explanation: when course 'CS-001' was deleted, the data in its related table was also automatically
+SQL> -- deleted, this is because takes, section and course linked together with 'course_id'.
+SQL> 
+SQL> -- Accident
+SQL> 
+SQL> -- i. Find the number of accidents in which the cars belonging to Jane Rowling were involved.
+SQL> select count(person.name)
+  2  from accident, person, participated
+  3  where accident.report_number = participated.report_number
+  4  and participated.driver_id = person.driver_id
+  5  and person.name = 'Jane Rowling';
+
+COUNT(PERSON.NAME)                                                              
+------------------                                                              
+                 2                                                              
+
+SQL> 
+SQL> -- ii. Update the amount of damage for the car with license number KUY 629
+SQL> -- in the accident with report number 7897423 to 2500.
+SQL> update participated
+  2  set damage_amount = 2500
+  3  where report_number = 7897423
+  4  and license = 'KUY 629';
+
+1 row updated.
+
+SQL> 
+SQL> -- iii. List the name of the persons that participated in accidents along with the total damage
+SQL> -- caused (descend) but only include those whose total damage is above 3000.
+SQL> with total_damage as
+  2  (select name, person.driver_id, sum(damage_amount)
+  3  from person, participated
+  4  where person.driver_id = participated.driver_id
+  5  group by person.driver_id, name
+  6  having sum(damage_amount) > 3000)
+  7  select name from total_damage
+  8  order by name desc;
+
+NAME                                                                            
+--------------------                                                            
+William Hardy                                                                   
+Kelly Woolf                                                                     
+Jane Rowling                                                                    
+
+SQL> 
+SQL> -- iv. Create a view that returns the locations where accidents have occurred along with
+SQL> -- the average amount of damage in that location. Call this view average_damage_per_location.
+SQL> create view average_damage_per_location
+  2  (
+  3  	 location,
+  4  	 average_damage
+  5  )
+  6  as (select location, avg(damage_amount) from accident, participated
+  7  where accident.report_number = participated.report_number
+  8  group by accident.location);
+
+View created.
+
+SQL> 
+SQL> -- v. Use the average_damage_per_location location you have just created to find
+SQL> -- the location that has the highest average damage.
+SQL> select location
+  2  from average_damage_per_location
+  3  where average_damage = (select max(average_damage)
+  4  from average_damage_per_location);
+
+LOCATION                                                                        
+--------------------                                                            
+Stockport                                                                       
+
+SQL> 
+SQL> drop view average_damage_per_location;
+
+View dropped.
+
+SQL> 
+SQL> -- [close]
+SQL> SPOOL OFF

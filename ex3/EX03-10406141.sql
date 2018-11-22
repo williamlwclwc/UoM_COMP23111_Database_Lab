@@ -3,16 +3,17 @@
 -- Exercise <03>
 -- by <Wenchang Liu>, ID <10406141>, login name <p87934wl>
 -- [opening]
+start /opt/info/courses/COMP23111/create-University-tables.sql
+start /opt/info/courses/COMP23111/populate-University-tables.sql
+start /opt/info/courses/COMP23111/create-Accident-tables.sql
+start /opt/info/courses/COMP23111/populate-Accident-tables.sql
+
 SET ECHO ON
 -- causes the SQL statements themselves to be spooled
 SPOOL EX03-10406141.log
--- sends everything to <spoolfilename>
--- here you can set the SQL*Plus parameters, such as column width,
--- that will allow the script to produce readable answers in the spool file
+-- sends everything to <EX03-10406141.log>
 -- [body]
 -- University
-start /opt/info/courses/COMP23111/create-University-tables.sql
-start /opt/info/courses/COMP23111/populate-University-tables.sql
 
 -- (a)
 
@@ -62,7 +63,9 @@ where student.dept_name = 'Comp. Sci.' and section.course_id = 'CS-001');
 
 -- vii. Delete all enrolments in the above section where the student’s name is Zhang.
 delete from (select * from takes inner join student on takes.id = student.id
-where takes.id = student.id and student.name = 'Zhang'); 
+where takes.id = student.id 
+and student.name = 'Zhang'
+and takes.course_id = 'CS-001'); 
 
 -- viii. Delete all takes tuples corresponding to any section & course with substring'database' of the title
 delete from (select * from takes 
@@ -76,14 +79,10 @@ where course.course_id = 'CS-001';
 -- x. Explanation: when course 'CS-001' was deleted, the data in its related table was also automatically
 -- deleted, this is because takes, section and course linked together with 'course_id'.
 
-start /opt/info/courses/COMP23111/drop-University-tables.sql
-
 -- Accident
-start /opt/info/courses/COMP23111/create-Accident-tables.sql
-start /opt/info/courses/COMP23111/populate-Accident-tables.sql
 
 -- i. Find the number of accidents in which the cars belonging to Jane Rowling were involved.
-select accident.report_number, person.name 
+select count(person.name) 
 from accident, person, participated
 where accident.report_number = participated.report_number
 and participated.driver_id = person.driver_id 
@@ -127,9 +126,10 @@ from average_damage_per_location);
 
 drop view average_damage_per_location;
 
-start /opt/info/courses/COMP23111/drop-Accident-tables.sql
 -- [close]
 SPOOL OFF
+start /opt/info/courses/COMP23111/drop-University-tables.sql
+start /opt/info/courses/COMP23111/drop-Accident-tables.sql
 -- [footer]
 --
 -- End of Exercise <03> by <Wenchang Liu>
