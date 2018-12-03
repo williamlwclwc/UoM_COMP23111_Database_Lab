@@ -17,3 +17,8 @@ Mapping EER to Relations
 ## EX3
 
 SQL plus practice
+
+## EX4
+
+SQL plus view & trigger practice
+
