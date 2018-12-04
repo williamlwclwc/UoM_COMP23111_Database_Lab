@@ -24,7 +24,7 @@ as (
     from customerinfo, ordercartinfo, lineitems
     where customerinfo.loginname = ordercartinfo.customerid
     and ordercartinfo.ordercartid = lineitems.ordercartid
-    and lineitems.qtyordered > 0)
+    and lineitems.qtyordered > 0
 );
 select * from customer_with_carts;
 
@@ -88,9 +88,10 @@ create or replace view carts_num
     cartnum
 )
 as(
-    select customerid, count(ordercartid)
-    from ordercartinfo
-    group by customerid 
+    select loginname, count(ordercartid)
+    from customerinfo
+    left join ordercartinfo on customerinfo.loginname = ordercartinfo.customerid
+    group by loginname
 );
 select customerid,
     case
@@ -116,7 +117,7 @@ from (select itemnum, itemsize, itemcolor, count(itemnum) as cnt_item
 from inventoryitem
 group by itemcolor, itemsize, itemnum);
 --Final:
-select itemnum, itemcolor, itemsize
+select itemnum, itemcolor, itemsize, outcome
 from (select itemnum, itemsize, itemcolor,
     case
         when cnt_item < 2
@@ -129,11 +130,40 @@ group by itemcolor, itemsize, itemnum))
 where outcome = 'BR-2 violated';
 
 --(g)
-
+create or replace trigger PriceIsTooHigh
+before insert or update of price on itemtype
+for each row
+declare minimum float(126);
+PRAGMA AUTONOMOUS_TRANSACTION;
+begin
+    select 4*min(price) into minimum from itemtype;
+    if :new.price > minimum then
+    raise_application_error(-20005, 'price of the item is too high');
+    end if;
+end;
+/
+--test for insert
+select * from itemtype;
+insert into itemtype(itemnum, name, picture, price, belongsto)
+values('C4', 'invalid insert', null, 50, 'UN');
+select * from itemtype;
+select * from itemtype;
+--test for update
+update itemtype
+set price = 50.99
+where itemnum = 'A1';
+select * from itemtype;
 -- [close]
 SPOOL OFF
 
-/opt/info/courses/COMP23111/drop-Eclectic-Ecommerce-tables.sql
+drop view customer_with_carts;
+drop view need_record;
+drop view order_price;
+drop view order_total;
+drop view carts_num;
+drop trigger PriceIsTooHigh;
+
+start /opt/info/courses/COMP23111/drop-Eclectic-Ecommerce-tables.sql
 -- [footer]
 --
 -- End of Exercise <04> by <Wenchang Liu>

@@ -1,0 +1,408 @@
+SQL> -- sends everything to <EX04-10406141.log>
+SQL> -- [body]
+SQL> 
+SQL> --(a)
+SQL> create or replace view customer_with_carts
+  2  (
+  3  	 firstname,
+  4  	 lastname
+  5  )
+  6  as (
+  7  	 select distinct firstname, lastname
+  8  	 from customerinfo, ordercartinfo, lineitems
+  9  	 where customerinfo.loginname = ordercartinfo.customerid
+ 10  	 and ordercartinfo.ordercartid = lineitems.ordercartid
+ 11  	 and lineitems.qtyordered > 0
+ 12  );
+
+View created.
+
+SQL> select * from customer_with_carts;
+
+FIRSTNAME            LASTNAME                                                   
+-------------------- --------------------                                       
+Ophelia              Elsinore                                                   
+Mary                 Folio                                                      
+Percy                Byron                                                      
+
+SQL> 
+SQL> --(b)
+SQL> create or replace view need_record
+  2  (
+  3  	 code,
+  4  	 itemnum,
+  5  	 categoryid,
+  6  	 quantityinstock
+  7  )
+  8  as(
+  9  	 select distinct lineitems.code, lineitems.itemnum, belongsto, qtyinstock
+ 10  	 from lineitems, itemtype, inventoryitem
+ 11  	 where lineitems.itemnum = inventoryitem.itemnum
+ 12  	 and lineitems.code = inventoryitem.code
+ 13  	 and lineitems.itemnum = itemtype.itemnum
+ 14  	 and inventoryitem.qtyinstock < 25
+ 15  );
+
+View created.
+
+SQL> select * from need_record;
+
+CODE                 ITEMNUM    CATEGORYID QUANTITYINSTOCK                      
+-------------------- ---------- ---------- ---------------                      
+hbk                  C2         H                       20                      
+
+SQL> 
+SQL> --(c)
+SQL> create or replace view order_price
+  2  (
+  3  	 loginname,
+  4  	 firstname,
+  5  	 lastname,
+  6  	 ordercartid,
+  7  	 price
+  8  )
+  9  as(
+ 10  	 select loginname, firstname, lastname, ordercartinfo.ordercartid, sum(orderprice * qtyordered)
+ 11  	 from customerinfo, ordercartinfo, lineitems
+ 12  	 where customerinfo.loginname = ordercartinfo.customerid
+ 13  	 and ordercartinfo.ordercartid = lineitems.ordercartid
+ 14  	 group by ordercartinfo.ordercartid, loginname, firstname, lastname
+ 15  );
+
+View created.
+
+SQL> select * from order_price;
+
+LOGINNAME  FIRSTNAME            LASTNAME             ORDERCARTI      PRICE      
+---------- -------------------- -------------------- ---------- ----------      
+shkeandco  Mary                 Folio                5                2.99      
+astrab     Percy                Byron                4               14.97      
+shkeandco  Mary                 Folio                1                8.97      
+dramab     Ophelia              Elsinore             2               11.97      
+astrab     Percy                Byron                8                7.98      
+astrab     Percy                Byron                3               73.83      
+shkeandco  Mary                 Folio                6               13.98      
+dramab     Ophelia              Elsinore             7                1.99      
+
+8 rows selected.
+
+SQL> 
+SQL> --(d)
+SQL> create or replace view order_total
+  2  (
+  3  	 loginname,
+  4  	 firstname,
+  5  	 lastname,
+  6  	 total
+  7  )
+  8  as(
+  9  	 select loginname, firstname, lastname, sum(orderprice * qtyordered)
+ 10  	 from customerinfo, ordercartinfo, lineitems
+ 11  	 where customerinfo.loginname = ordercartinfo.customerid
+ 12  	 and ordercartinfo.ordercartid = lineitems.ordercartid
+ 13  	 group by customerid, loginname, firstname, lastname
+ 14  );
+
+View created.
+
+SQL> select * from order_total;
+
+LOGINNAME  FIRSTNAME            LASTNAME                  TOTAL                 
+---------- -------------------- -------------------- ----------                 
+dramab     Ophelia              Elsinore                  13.96                 
+astrab     Percy                Byron                     96.78                 
+shkeandco  Mary                 Folio                     25.94                 
+
+SQL> 
+SQL> --(e)
+SQL> create or replace view carts_num
+  2  (
+  3  	 customerid,
+  4  	 cartnum
+  5  )
+  6  as(
+  7  	 select loginname, count(ordercartid)
+  8  	 from customerinfo
+  9  	 left join ordercartinfo on customerinfo.loginname = ordercartinfo.customerid
+ 10  	 group by loginname
+ 11  );
+
+View created.
+
+SQL> select customerid,
+  2  	 case
+  3  	     when cartnum < 3
+  4  	     then 'BR-1 satisfied'
+  5  	     else 'BR-1 violated'
+  6  	 end as outcome
+  7  from carts_num;
+
+CUSTOMERID OUTCOME                                                              
+---------- --------------                                                       
+choizeznyc BR-1 satisfied                                                       
+dramab     BR-1 satisfied                                                       
+shkeandco  BR-1 violated                                                        
+astrab     BR-1 violated                                                        
+
+SQL> 
+SQL> --(f)
+SQL> --Q2：
+SQL> select itemnum, itemsize, itemcolor, count(itemnum) as cnt_item
+  2  from inventoryitem
+  3  group by itemcolor, itemsize, itemnum;
+
+ITEMNUM      ITEMSIZE ITEMCOLOR         CNT_ITEM                                
+---------- ---------- --------------- ----------                                
+A3                  2 black                    1                                
+A0                  4 green                    2                                
+A2                  3 green                    1                                
+A0                  3 black                    1                                
+B1                  4 white                    1                                
+C1                  4 black                    1                                
+C2                  3 black                    2                                
+
+7 rows selected.
+
+SQL> --Q1:
+SQL> select itemnum, itemsize, itemcolor,
+  2  	 case
+  3  	     when cnt_item < 2
+  4  	     then 'BR-2 satisfied'
+  5  	     else 'BR-2 violated'
+  6  	 end as outcome
+  7  from (select itemnum, itemsize, itemcolor, count(itemnum) as cnt_item
+  8  from inventoryitem
+  9  group by itemcolor, itemsize, itemnum);
+
+ITEMNUM      ITEMSIZE ITEMCOLOR       OUTCOME                                   
+---------- ---------- --------------- --------------                            
+A3                  2 black           BR-2 satisfied                            
+A0                  4 green           BR-2 violated                             
+A2                  3 green           BR-2 satisfied                            
+A0                  3 black           BR-2 satisfied                            
+B1                  4 white           BR-2 satisfied                            
+C1                  4 black           BR-2 satisfied                            
+C2                  3 black           BR-2 violated                             
+
+7 rows selected.
+
+SQL> --Final:
+SQL> select itemnum, itemcolor, itemsize, outcome
+  2  from (select itemnum, itemsize, itemcolor,
+  3  	 case
+  4  	     when cnt_item < 2
+  5  	     then 'BR-2 satisfied'
+  6  	     else 'BR-2 violated'
+  7  	 end as outcome
+  8  from (select itemnum, itemsize, itemcolor, count(itemnum) as cnt_item
+  9  from inventoryitem
+ 10  group by itemcolor, itemsize, itemnum))
+ 11  where outcome = 'BR-2 violated';
+
+ITEMNUM    ITEMCOLOR         ITEMSIZE OUTCOME                                   
+---------- --------------- ---------- --------------                            
+A0         green                    4 BR-2 violated                             
+C2         black                    3 BR-2 violated                             
+
+SQL> 
+SQL> --(g)
+SQL> create or replace trigger PriceIsTooHigh
+  2  before insert or update of price on itemtype
+  3  for each row
+  4  declare minimum float(126);
+  5  PRAGMA AUTONOMOUS_TRANSACTION;
+  6  begin
+  7  	 select 4*min(price) into minimum from itemtype;
+  8  	 if :new.price > minimum then
+  9  	 raise_application_error(-20005, 'price of the item is too high');
+ 10  	 end if;
+ 11  end;
+ 12  /
+
+Trigger created.
+
+SQL> --test for insert
+SQL> select * from itemtype;
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A0         The Anarchy of Mask                                                  
+***                                                     10.99 P                 
+                                                                                
+A1         The Butler Did                                                       
+---                                                     11.99 C                 
+                                                                                
+A2         The Abolished Man                                                    
+===                                                     15.99 SF                
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A3         Lyrical Bullets                                                      
++-+-                                                    20.99 P                 
+                                                                                
+B1         The Postlude                                                         
+=\=\=                                                   34.99 P                 
+                                                                                
+C1         The August of Guns                                                   
+**--                                                    10.99 H                 
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+C2         The Expectant Mirror                                                 
+^-^                                                     12.99 H                 
+                                                                                
+
+7 rows selected.
+
+SQL> insert into itemtype(itemnum, name, picture, price, belongsto)
+  2  values('C4', 'invalid insert', null, 50, 'UN');
+insert into itemtype(itemnum, name, picture, price, belongsto)
+            *
+ERROR at line 1:
+ORA-20005: price of the item is too high 
+ORA-06512: at "P87934WL.PRICEISTOOHIGH", line 6 
+ORA-04088: error during execution of trigger 'P87934WL.PRICEISTOOHIGH' 
+
+
+SQL> select * from itemtype;
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A0         The Anarchy of Mask                                                  
+***                                                     10.99 P                 
+                                                                                
+A1         The Butler Did                                                       
+---                                                     11.99 C                 
+                                                                                
+A2         The Abolished Man                                                    
+===                                                     15.99 SF                
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A3         Lyrical Bullets                                                      
++-+-                                                    20.99 P                 
+                                                                                
+B1         The Postlude                                                         
+=\=\=                                                   34.99 P                 
+                                                                                
+C1         The August of Guns                                                   
+**--                                                    10.99 H                 
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+C2         The Expectant Mirror                                                 
+^-^                                                     12.99 H                 
+                                                                                
+
+7 rows selected.
+
+SQL> select * from itemtype;
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A0         The Anarchy of Mask                                                  
+***                                                     10.99 P                 
+                                                                                
+A1         The Butler Did                                                       
+---                                                     11.99 C                 
+                                                                                
+A2         The Abolished Man                                                    
+===                                                     15.99 SF                
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A3         Lyrical Bullets                                                      
++-+-                                                    20.99 P                 
+                                                                                
+B1         The Postlude                                                         
+=\=\=                                                   34.99 P                 
+                                                                                
+C1         The August of Guns                                                   
+**--                                                    10.99 H                 
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+C2         The Expectant Mirror                                                 
+^-^                                                     12.99 H                 
+                                                                                
+
+7 rows selected.
+
+SQL> --test for update
+SQL> update itemtype
+  2  set price = 50.99
+  3  where itemnum = 'A1';
+update itemtype
+       *
+ERROR at line 1:
+ORA-20005: price of the item is too high 
+ORA-06512: at "P87934WL.PRICEISTOOHIGH", line 6 
+ORA-04088: error during execution of trigger 'P87934WL.PRICEISTOOHIGH' 
+
+
+SQL> select * from itemtype;
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A0         The Anarchy of Mask                                                  
+***                                                     10.99 P                 
+                                                                                
+A1         The Butler Did                                                       
+---                                                     11.99 C                 
+                                                                                
+A2         The Abolished Man                                                    
+===                                                     15.99 SF                
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+A3         Lyrical Bullets                                                      
++-+-                                                    20.99 P                 
+                                                                                
+B1         The Postlude                                                         
+=\=\=                                                   34.99 P                 
+                                                                                
+C1         The August of Guns                                                   
+**--                                                    10.99 H                 
+                                                                                
+
+ITEMNUM    NAME                                                                 
+---------- --------------------                                                 
+PICTURE                                                 PRICE BELONGSTO         
+-------------------------------------------------- ---------- ----------        
+C2         The Expectant Mirror                                                 
+^-^                                                     12.99 H                 
+                                                                                
+
+7 rows selected.
+
+SQL> -- [close]
+SQL> SPOOL OFF
