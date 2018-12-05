@@ -11,6 +11,8 @@ SET ECHO ON
 -- causes the SQL statements themselves to be spooled
 SPOOL EX04-10406141.log
 -- sends everything to <EX04-10406141.log>
+set lin 120
+col picture for A25
 -- [body]
 
 --(a)
@@ -37,11 +39,9 @@ create or replace view need_record
     quantityinstock
 )
 as(
-    select distinct lineitems.code, lineitems.itemnum, belongsto, qtyinstock 
-    from lineitems, itemtype, inventoryitem
-    where lineitems.itemnum = inventoryitem.itemnum
-    and lineitems.code = inventoryitem.code
-    and lineitems.itemnum = itemtype.itemnum
+    select distinct code, itemtype.itemnum, belongsto, qtyinstock 
+    from itemtype, inventoryitem
+    where itemtype.itemnum = inventoryitem.itemnum
     and inventoryitem.qtyinstock < 25
 );
 select * from need_record;
@@ -88,7 +88,7 @@ create or replace view carts_num
     cartnum
 )
 as(
-    select loginname, count(ordercartid)
+    select loginname, count(ordercartid) as cart_num
     from customerinfo
     left join ordercartinfo on customerinfo.loginname = ordercartinfo.customerid
     group by loginname
