@@ -22,3 +22,6 @@ SQL plus practice
 
 SQL plus view & trigger practice
 
+## EX5
+
+Writing sql stored routines

@@ -1,0 +1,268 @@
+SQL> -- sends everything to <EX05-10406141.log>
+SQL> set lin 120
+SQL> col title for A20
+SQL> col createdBy for A20
+SQL> col is_distributed_as for A20
+SQL> col albumTitle for A20
+SQL> col songTitle for A20
+SQL> 
+SQL> -- [body]
+SQL> 
+SQL> --(1)
+SQL> select * from contractinfo;
+
+HASCONTRACT                              DATE_FROM DATE_TO     DURATION                                                 
+---------------------------------------- --------- --------- ----------                                                 
+Goldfrat                                 10-OCT-10 09-OCT-14          0                                                 
+Simon Palm                               20-AUG-05 19-AUG-07          0                                                 
+Simon Palm                               20-SEP-12 19-AUG-14          0                                                 
+Flut                                     10-AUG-09 09-SEP-14          0                                                 
+John Cliff                               10-MAR-06 10-APR-12          0                                                 
+Jay Blancard                             01-JAN-04 20-JUN-14          0                                                 
+Palmer John                              12-FEB-06 01-JUN-08          0                                                 
+Zero7                                    31-DEC-11 26-FEB-16          0                                                 
+JZ                                       24-MAR-05 30-DEC-07          0                                                 
+Scandal                                  22-OCT-12 19-NOV-16          0                                                 
+JK Rowl                                  19-APR-03 06-JAN-09          0                                                 
+
+HASCONTRACT                              DATE_FROM DATE_TO     DURATION                                                 
+---------------------------------------- --------- --------- ----------                                                 
+PJ Blox                                  21-JUN-08 16-JUL-13          0                                                 
+
+12 rows selected.
+
+SQL> create or replace trigger setDuration
+  2  before insert or update on contractinfo
+  3  for each row
+  4  begin
+  5  	 :new.duration := :new.date_to - :new.date_from;
+  6  end;
+  7  /
+
+Trigger created.
+
+SQL> insert into contractinfo(hascontract, date_from, date_to, duration)
+  2  values('JZ', '21-JUN-13', '16-JUL-14', null);
+
+1 row created.
+
+SQL> select * from contractinfo;
+
+HASCONTRACT                              DATE_FROM DATE_TO     DURATION                                                 
+---------------------------------------- --------- --------- ----------                                                 
+Goldfrat                                 10-OCT-10 09-OCT-14          0                                                 
+Simon Palm                               20-AUG-05 19-AUG-07          0                                                 
+Simon Palm                               20-SEP-12 19-AUG-14          0                                                 
+Flut                                     10-AUG-09 09-SEP-14          0                                                 
+John Cliff                               10-MAR-06 10-APR-12          0                                                 
+Jay Blancard                             01-JAN-04 20-JUN-14          0                                                 
+Palmer John                              12-FEB-06 01-JUN-08          0                                                 
+Zero7                                    31-DEC-11 26-FEB-16          0                                                 
+JZ                                       24-MAR-05 30-DEC-07          0                                                 
+Scandal                                  22-OCT-12 19-NOV-16          0                                                 
+JK Rowl                                  19-APR-03 06-JAN-09          0                                                 
+
+HASCONTRACT                              DATE_FROM DATE_TO     DURATION                                                 
+---------------------------------------- --------- --------- ----------                                                 
+PJ Blox                                  21-JUN-08 16-JUL-13          0                                                 
+JZ                                       21-JUN-13 16-JUL-14        390                                                 
+
+13 rows selected.
+
+SQL> update contractinfo
+  2  set date_to = '16-JUL-15'
+  3  where date_from = '21-JUN-13';
+
+1 row updated.
+
+SQL> select * from contractinfo;
+
+HASCONTRACT                              DATE_FROM DATE_TO     DURATION                                                 
+---------------------------------------- --------- --------- ----------                                                 
+Goldfrat                                 10-OCT-10 09-OCT-14          0                                                 
+Simon Palm                               20-AUG-05 19-AUG-07          0                                                 
+Simon Palm                               20-SEP-12 19-AUG-14          0                                                 
+Flut                                     10-AUG-09 09-SEP-14          0                                                 
+John Cliff                               10-MAR-06 10-APR-12          0                                                 
+Jay Blancard                             01-JAN-04 20-JUN-14          0                                                 
+Palmer John                              12-FEB-06 01-JUN-08          0                                                 
+Zero7                                    31-DEC-11 26-FEB-16          0                                                 
+JZ                                       24-MAR-05 30-DEC-07          0                                                 
+Scandal                                  22-OCT-12 19-NOV-16          0                                                 
+JK Rowl                                  19-APR-03 06-JAN-09          0                                                 
+
+HASCONTRACT                              DATE_FROM DATE_TO     DURATION                                                 
+---------------------------------------- --------- --------- ----------                                                 
+PJ Blox                                  21-JUN-08 16-JUL-13          0                                                 
+JZ                                       21-JUN-13 16-JUL-15        755                                                 
+
+13 rows selected.
+
+SQL> 
+SQL> --(2)
+SQL> create or replace procedure checkTemporal
+  2  (name in contractinfo.hascontract%type, dateFrom in date, dateTo in date)
+  3  is
+  4  	 cnt number;
+  5  begin
+  6  	 if dateFrom > dateTo then
+  7  	     raise_application_error(-20001, 'date_from should be earlier than date_to');
+  8  	 end if;
+  9  	 select count(hascontract) into cnt from
+ 10  	     (select * from contractinfo where hascontract = name
+ 11  	     and ((dateFrom between date_from and date_to)
+ 12  	  or (dateTo between date_from and date_to)));
+ 13  	     if cnt > 0 then
+ 14  		     raise_application_error(-20002, 'conflict with prior contracts');
+ 15  	     end if;
+ 16  end;
+ 17  /
+
+Procedure created.
+
+SQL> -- dateTo prior to dateFrom
+SQL> execute checkTemporal('JZ', '11-OCT-16', '20-OCT-14');
+BEGIN checkTemporal('JZ', '11-OCT-16', '20-OCT-14'); END;
+
+*
+ERROR at line 1:
+ORA-20001: date_from should be earlier than date_to 
+ORA-06512: at "P87934WL.CHECKTEMPORAL", line 7 
+ORA-06512: at line 1 
+
+
+SQL> -- new contract's valid date lies between old one's valid date
+SQL> execute checkTemporal('JZ', '1-JAN-05', '13-OCT-06');
+BEGIN checkTemporal('JZ', '1-JAN-05', '13-OCT-06'); END;
+
+*
+ERROR at line 1:
+ORA-20002: conflict with prior contracts 
+ORA-06512: at "P87934WL.CHECKTEMPORAL", line 14 
+ORA-06512: at line 1 
+
+
+SQL> -- working just fine
+SQL> execute checkTemporal('JZ', '13-OCT-18', '10-OCT-20');
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> --(3)
+SQL> create or replace view AlbumDistribution
+  2  (
+  3  	 album,
+  4  	 title,
+  5  	 createdby,
+  6  	 is_distributed_as
+  7  )
+  8  as(
+  9  	 select album_id, title, createdBy,
+ 10  	     case
+ 11  	     when album_id like'%t' then 't'
+ 12  		 when album_id like '%c' then 'c'
+ 13  		 when album_id like '%v' then 'v'
+ 14  	     end
+ 15  	 from (select * from album)
+ 16  );
+
+View created.
+
+SQL> select * from AlbumDistribution;
+
+ALBUM TITLE                CREATEDBY            IS_DISTRIBUTED_AS                                                       
+----- -------------------- -------------------- --------------------                                                    
+1c    20 People in a Field Goldfrat             c                                                                       
+1v    20 People in a Field Goldfrat             v                                                                       
+1t    20 People in a Field Goldfrat             t                                                                       
+2c    My Feet              Flut                 c                                                                       
+2v    My Feet              Flut                 v                                                                       
+3c    Debut                Jay Blancard         c                                                                       
+
+6 rows selected.
+
+SQL> 
+SQL> --(4)
+SQL> set serveroutput on;
+SQL> create or replace procedure printSequence
+  2   (albumType in varchar, albumTitle in album.title%type)
+  3  is
+  4  albumName album.title%type;
+  5  fetchedAlbumTitle album.title%type;
+  6  fetchedSongTitle finishedtrack.released_title%type;
+  7  cursor cursor1(albumName in album.title%type) is
+  8  	     select album.title as albumTitle,finishedtrack.released_title as songTitle
+  9  	     from hastrack
+ 10  	     join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom
+ 11  	     join album on hastrack.album_id = album.album_id
+ 12  	     where album.title = albumName;
+ 13  
+ 14  begin
+ 15  -- Get the title of the album
+ 16  	     select title into albumName from AlbumDistribution
+ 17  	     where is_distributed_as = albumType and title like '%'||albumTitle||'%';
+ 18  	     open cursor1(albumName);
+ 19  	     loop
+ 20  		 fetch cursor1 into fetchedAlbumTitle, fetchedSongTitle;
+ 21  		 exit when cursor1%NOTFOUND;
+ 22  		 dbms_output.put_line('sequence, ' || fetchedSongTitle || ' > ' || fetchedAlbumTitle);
+ 23  	     end loop;
+ 24  	     close cursor1;
+ 25  end;
+ 26  /
+
+Procedure created.
+
+SQL> 
+SQL> -- valid
+SQL> select album.title as albumTitle, finishedtrack.released_title as songTitle
+  2  from hastrack
+  3  join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom
+  4  join album on hastrack.album_id = album.album_id
+  5  where album.title = 'Debut';
+
+ALBUMTITLE           SONGTITLE                                                                                          
+-------------------- --------------------                                                                               
+Debut                Power                                                                                              
+Debut                What is your name?                                                                                 
+Debut                Mix                                                                                                
+Debut                Manic                                                                                              
+Debut                Streets                                                                                            
+Debut                Road                                                                                               
+Debut                Forest                                                                                             
+Debut                Deep                                                                                               
+Debut                Danger                                                                                             
+Debut                Danger Remix                                                                                       
+
+10 rows selected.
+
+SQL> execute show_sequence('c', 'eb');
+sequence, Power > Debut                                                                                                 
+sequence, What is your name? > Debut                                                                                    
+sequence, Mix > Debut                                                                                                   
+sequence, Manic > Debut                                                                                                 
+sequence, Streets > Debut                                                                                               
+sequence, Road > Debut                                                                                                  
+sequence, Forest > Debut                                                                                                
+sequence, Deep > Debut                                                                                                  
+sequence, Danger > Debut                                                                                                
+sequence, Danger Remix > Debut                                                                                          
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> 
+SQL> --invalid
+SQL> execute show_sequence('c', 'invalidTest');
+BEGIN show_sequence('c', 'invalidTest'); END;
+
+*
+ERROR at line 1:
+ORA-01403: no data found 
+ORA-06512: at "P87934WL.SHOW_SEQUENCE", line 17 
+ORA-06512: at line 1 
+
+
+SQL> 
+SQL> -- [close]
+SQL> SPOOL OFF
