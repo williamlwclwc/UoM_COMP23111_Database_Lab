@@ -190,76 +190,73 @@ SQL> create or replace procedure printSequence
   4  albumName album.title%type;
   5  fetchedAlbumTitle album.title%type;
   6  fetchedSongTitle finishedtrack.released_title%type;
-  7  cursor cursor1(albumName in album.title%type) is
-  8  	     select album.title as albumTitle,finishedtrack.released_title as songTitle
-  9  	     from hastrack
- 10  	     join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom
- 11  	     join album on hastrack.album_id = album.album_id
- 12  	     where album.title = albumName;
- 13  
- 14  begin
- 15  -- Get the title of the album
- 16  	     select title into albumName from AlbumDistribution
- 17  	     where is_distributed_as = albumType and title like '%'||albumTitle||'%';
- 18  	     open cursor1(albumName);
- 19  	     loop
- 20  		 fetch cursor1 into fetchedAlbumTitle, fetchedSongTitle;
- 21  		 exit when cursor1%NOTFOUND;
- 22  		 dbms_output.put_line('sequence, ' || fetchedSongTitle || ' > ' || fetchedAlbumTitle);
- 23  	     end loop;
- 24  	     close cursor1;
- 25  end;
- 26  /
+  7  fetchedSequence number;
+  8  cursor cursor1(albumName in album.title%type) is
+  9  	     select distinct album.title as albumTitle,
+ 10  		finishedtrack.released_title as songTitle,
+ 11  		hastrack.sequence as sNum
+ 12  	     from hastrack
+ 13  	     join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom
+ 14  	     join album on hastrack.album_id = album.album_id
+ 15  	     where album.title = albumName
+ 16  	 order by(hastrack.sequence);
+ 17  
+ 18  begin
+ 19  -- Get the title of the album
+ 20  	     select title into albumName from AlbumDistribution
+ 21  	     where is_distributed_as = albumType and title like '%'||albumTitle||'%';
+ 22  	     open cursor1(albumName);
+ 23  	     loop
+ 24  		 fetch cursor1 into fetchedAlbumTitle, fetchedSongTitle, fetchedSequence;
+ 25  		 exit when cursor1%NOTFOUND;
+ 26  		 dbms_output.put_line(fetchedSequence || ', ' || fetchedSongTitle || ' > ' || fetchedAlbumTitle);
+ 27  	     end loop;
+ 28  	     close cursor1;
+ 29  end;
+ 30  /
 
 Procedure created.
 
 SQL> 
 SQL> -- valid
-SQL> select album.title as albumTitle, finishedtrack.released_title as songTitle
+SQL> select distinct album.title as albumTitle, finishedtrack.released_title as songTitle
   2  from hastrack
   3  join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom
   4  join album on hastrack.album_id = album.album_id
-  5  where album.title = 'Debut';
+  5  where album.title = 'My Feet';
 
 ALBUMTITLE           SONGTITLE                                                                                          
 -------------------- --------------------                                                                               
-Debut                Power                                                                                              
-Debut                What is your name?                                                                                 
-Debut                Mix                                                                                                
-Debut                Manic                                                                                              
-Debut                Streets                                                                                            
-Debut                Road                                                                                               
-Debut                Forest                                                                                             
-Debut                Deep                                                                                               
-Debut                Danger                                                                                             
-Debut                Danger Remix                                                                                       
+My Feet              Wow                                                                                                
+My Feet              Whizzy                                                                                             
+My Feet              Milko                                                                                              
+My Feet              Place and Time                                                                                     
+My Feet              Mad                                                                                                
+My Feet              Who Are You?                                                                                       
+My Feet              Bling                                                                                              
 
-10 rows selected.
+7 rows selected.
 
-SQL> execute show_sequence('c', 'eb');
-sequence, Power > Debut                                                                                                 
-sequence, What is your name? > Debut                                                                                    
-sequence, Mix > Debut                                                                                                   
-sequence, Manic > Debut                                                                                                 
-sequence, Streets > Debut                                                                                               
-sequence, Road > Debut                                                                                                  
-sequence, Forest > Debut                                                                                                
-sequence, Deep > Debut                                                                                                  
-sequence, Danger > Debut                                                                                                
-sequence, Danger Remix > Debut                                                                                          
+SQL> execute printSequence('c', 'ee');
+1, Wow > My Feet                                                                                                        
+2, Whizzy > My Feet                                                                                                     
+3, Who Are You? > My Feet                                                                                               
+4, Place and Time > My Feet                                                                                             
+5, Milko > My Feet                                                                                                      
+6, Mad > My Feet                                                                                                        
+7, Bling > My Feet                                                                                                      
 
 PL/SQL procedure successfully completed.
 
 SQL> 
-SQL> 
 SQL> --invalid
-SQL> execute show_sequence('c', 'invalidTest');
-BEGIN show_sequence('c', 'invalidTest'); END;
+SQL> execute printSequence('c', 'invalidTest');
+BEGIN printSequence('c', 'invalidTest'); END;
 
 *
 ERROR at line 1:
 ORA-01403: no data found 
-ORA-06512: at "P87934WL.SHOW_SEQUENCE", line 17 
+ORA-06512: at "P87934WL.PRINTSEQUENCE", line 20 
 ORA-06512: at line 1 
 
 

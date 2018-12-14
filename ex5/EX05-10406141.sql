@@ -88,12 +88,16 @@ is
 albumName album.title%type;
 fetchedAlbumTitle album.title%type;
 fetchedSongTitle finishedtrack.released_title%type;
+fetchedSequence number;
 cursor cursor1(albumName in album.title%type) is
-	select album.title as albumTitle,finishedtrack.released_title as songTitle
+	select distinct album.title as albumTitle,
+           finishedtrack.released_title as songTitle,
+           hastrack.sequence as sNum
 	from hastrack 
 	join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom 
 	join album on hastrack.album_id = album.album_id
-	where album.title = albumName;
+	where album.title = albumName
+    order by(hastrack.sequence);
 
 begin
 -- Get the title of the album
@@ -101,25 +105,24 @@ begin
  	where is_distributed_as = albumType and title like '%'||albumTitle||'%';
  	open cursor1(albumName);
         loop
-            fetch cursor1 into fetchedAlbumTitle, fetchedSongTitle;
+            fetch cursor1 into fetchedAlbumTitle, fetchedSongTitle, fetchedSequence;
             exit when cursor1%NOTFOUND;
-            dbms_output.put_line('sequence, ' || fetchedSongTitle || ' > ' || fetchedAlbumTitle);
+            dbms_output.put_line(fetchedSequence || ', ' || fetchedSongTitle || ' > ' || fetchedAlbumTitle);
         end loop;
  	close cursor1;
 end;
 /
 
 -- valid
-select album.title as albumTitle, finishedtrack.released_title as songTitle
+select distinct album.title as albumTitle, finishedtrack.released_title as songTitle
 from hastrack 
 join finishedtrack on hastrack.originatesfrom = finishedtrack.originatesFrom 
 join album on hastrack.album_id = album.album_id
-where album.title = 'Debut';
-execute show_sequence('c', 'eb');
-
+where album.title = 'My Feet';
+execute printSequence('c', 'ee');
 
 --invalid
-execute show_sequence('c', 'invalidTest');
+execute printSequence('c', 'invalidTest');
 
 -- [close]
 SPOOL OFF
